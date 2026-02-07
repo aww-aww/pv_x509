@@ -23,6 +23,11 @@ describe("issues", () => {
         name: "ECDSA",
         hash: "SHA-256",
       },
+      extensions: [
+        new x509.BasicConstraintsExtension(true, undefined, true),
+        new x509.KeyUsagesExtension(
+          x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+      ],
     }, crypto);
 
     const intermediateKeys = await crypto.subtle.generateKey({
@@ -41,6 +46,11 @@ describe("issues", () => {
         name: "ECDSA",
         hash: "SHA-256",
       },
+      extensions: [
+        new x509.BasicConstraintsExtension(true, undefined, true),
+        new x509.KeyUsagesExtension(
+          x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+      ],
     }, crypto);
 
     const leafKeys = await crypto.subtle.generateKey({

@@ -104,4 +104,78 @@ describe("X509ChainBuilder Security", () => {
     // to enforce basic constraints.
     expect(chain.length).not.toBe(3);
   });
+
+  it("should NOT build a chain using a V3 certificate without Basic Constraints as an issuer", async () => {
+    const crypto = cryptoProvider.get();
+
+    // 1. Generate Root CA
+    const rootAlg = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048,
+    };
+    const rootKeys = await crypto.subtle.generateKey(rootAlg, true, ["sign", "verify"]);
+    const rootCert = await X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=Root CA",
+      notBefore: new Date("2020/01/01"),
+      notAfter: new Date("2030/01/01"),
+      signingAlgorithm: rootAlg,
+      keys: rootKeys,
+      extensions: [
+        new BasicConstraintsExtension(true, undefined, true), // CA=true
+        new KeyUsagesExtension(KeyUsageFlags.keyCertSign | KeyUsageFlags.cRLSign, true),
+      ],
+    });
+
+    // 2. Generate Intermediate (V3, NO BasicConstraints)
+    const intermediateAlg = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048,
+    };
+    const intermediateKeys = await crypto.subtle.generateKey(intermediateAlg, true, ["sign", "verify"]);
+    const intermediateCert = await X509CertificateGenerator.create({
+      serialNumber: "02",
+      subject: "CN=Intermediate",
+      issuer: "CN=Root CA",
+      notBefore: new Date("2020/01/01"),
+      notAfter: new Date("2030/01/01"),
+      signingAlgorithm: rootAlg,
+      signingKey: rootKeys.privateKey,
+      publicKey: intermediateKeys.publicKey,
+      extensions: [
+        // NO BasicConstraintsExtension
+        new KeyUsagesExtension(KeyUsageFlags.digitalSignature | KeyUsageFlags.keyCertSign, true),
+      ],
+    });
+
+    // 3. Generate Leaf Certificate signed by Intermediate
+    const leafAlg = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048,
+    };
+    const leafKeys = await crypto.subtle.generateKey(leafAlg, true, ["sign", "verify"]);
+    const leafCert = await X509CertificateGenerator.create({
+      serialNumber: "03",
+      subject: "CN=Leaf",
+      issuer: "CN=Intermediate",
+      notBefore: new Date("2020/01/01"),
+      notAfter: new Date("2030/01/01"),
+      signingAlgorithm: intermediateAlg,
+      signingKey: intermediateKeys.privateKey,
+      publicKey: leafKeys.publicKey,
+    });
+
+    // 4. Build Chain
+    const chainBuilder = new X509ChainBuilder({ certificates: [rootCert, intermediateCert] });
+
+    const chain = await chainBuilder.build(leafCert);
+
+    expect(chain.length).toBe(1);
+  });
 });
