@@ -99,7 +99,12 @@ export class X509ChainBuilder {
         const basicConstraints = item.getExtension<BasicConstraintsExtension>(
           asn1X509.id_ce_basicConstraints,
         );
-        if (basicConstraints && !basicConstraints.ca) {
+        // V3 certificate must have BasicConstraints extension with cA: TRUE
+        if (item.version === asn1X509.Version.v3) {
+          if (!basicConstraints || !basicConstraints.ca) {
+            continue;
+          }
+        } else if (basicConstraints && !basicConstraints.ca) {
           continue;
         }
 

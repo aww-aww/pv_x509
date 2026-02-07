@@ -94,6 +94,13 @@ export class X509Certificate extends PemData<Certificate> implements IPublicKeyC
   #publicKey?: PublicKey;
 
   /**
+   * Gets a version of the certificate
+   */
+  public get version(): Version {
+    return this.asn.tbsCertificate.version;
+  }
+
+  /**
    * Gets a public key of the certificate
    */
   public get publicKey(): PublicKey {
