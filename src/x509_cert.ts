@@ -105,6 +105,13 @@ export class X509Certificate extends PemData<Certificate> implements IPublicKeyC
   }
 
   /**
+   * Gets the certificate version
+   */
+  public get version(): Version {
+    return this.asn.tbsCertificate.version;
+  }
+
+  /**
    * Gets a hexadecimal string of the serial number
    */
   public get serialNumber(): string {
