@@ -103,6 +103,11 @@ export class X509ChainBuilder {
           continue;
         }
 
+        // RFC 5280: V3 CA certificates MUST have BasicConstraints with cA=true
+        if (item.version === asn1X509.Version.v3 && !basicConstraints) {
+          continue;
+        }
+
         // Check Key Usage
         const keyUsage = item.getExtension<KeyUsagesExtension>(asn1X509.id_ce_keyUsage);
         if (keyUsage && !(keyUsage.usages & KeyUsageFlags.keyCertSign)) {
