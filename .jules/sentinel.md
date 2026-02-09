@@ -1,0 +1,4 @@
+## 2025-02-19 - Insecure V3 Certificate Issuer Validation
+**Vulnerability:** The `X509ChainBuilder` allowed Version 3 certificates to be used as issuers (CAs) even if they lacked the `BasicConstraints` extension, provided they also lacked the `KeyUsage` extension (or had `keyCertSign` usage). This violates RFC 5280, which mandates that V3 CAs MUST have `BasicConstraints: cA=true`.
+**Learning:** Default behavior for missing extensions can be dangerous. When validating critical security properties like "is this a CA?", explicit presence of the authorizing extension (BasicConstraints) must be enforced for V3 certificates, rather than assuming it's valid if missing.
+**Prevention:** Enforce strict RFC 5280 compliance for V3 certificates in the chain builder. Require `BasicConstraints` to be present and `cA` to be true for any V3 certificate used as an issuer.

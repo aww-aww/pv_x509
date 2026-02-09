@@ -99,7 +99,13 @@ export class X509ChainBuilder {
         const basicConstraints = item.getExtension<BasicConstraintsExtension>(
           asn1X509.id_ce_basicConstraints,
         );
-        if (basicConstraints && !basicConstraints.ca) {
+        if (item.asn.tbsCertificate.version === asn1X509.Version.v3) {
+          // v3: MUST contain BasicConstraints
+          if (!basicConstraints || !basicConstraints.ca) {
+            continue;
+          }
+        } else if (basicConstraints && !basicConstraints.ca) {
+          // v1, v2: IF BasicConstraints is present, it MUST be valid
           continue;
         }
 
