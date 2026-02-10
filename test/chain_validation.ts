@@ -104,4 +104,85 @@ describe("X509ChainBuilder Security", () => {
     // to enforce basic constraints.
     expect(chain.length).not.toBe(3);
   });
+
+  it("should NOT build a chain using a V3 certificate without BasicConstraints as an issuer", async () => {
+    const crypto = cryptoProvider.get();
+
+    const rootAlg = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048,
+    };
+    const rootKeys = await crypto.subtle.generateKey(rootAlg, true, ["sign", "verify"]);
+    const rootCert = await X509CertificateGenerator.createSelfSigned({
+      serialNumber: "01",
+      name: "CN=Root CA",
+      notBefore: new Date("2020/01/01"),
+      notAfter: new Date("2030/01/01"),
+      signingAlgorithm: rootAlg,
+      keys: rootKeys,
+      extensions: [
+        new BasicConstraintsExtension(true, undefined, true),
+        new KeyUsagesExtension(KeyUsageFlags.keyCertSign | KeyUsageFlags.cRLSign, true),
+      ],
+    });
+
+    const interAlg = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048,
+    };
+    const interKeys = await crypto.subtle.generateKey(interAlg, true, ["sign", "verify"]);
+
+    // Note: By default, X509CertificateGenerator creates V3 certificates.
+    // We intentionally omit BasicConstraintsExtension here.
+    const interCert = await X509CertificateGenerator.create({
+      serialNumber: "02",
+      subject: "CN=Intermediate V3 Missing BC",
+      issuer: "CN=Root CA",
+      notBefore: new Date("2020/01/01"),
+      notAfter: new Date("2030/01/01"),
+      signingAlgorithm: rootAlg,
+      signingKey: rootKeys.privateKey,
+      publicKey: interKeys.publicKey,
+      extensions: [
+        // No BasicConstraints
+        new KeyUsagesExtension(KeyUsageFlags.keyCertSign, true), // keyCertSign is set, but should be ignored without BC
+      ],
+    });
+
+    const leafAlg = {
+      name: "RSASSA-PKCS1-v1_5",
+      hash: "SHA-256",
+      publicExponent: new Uint8Array([1, 0, 1]),
+      modulusLength: 2048,
+    };
+    const leafKeys = await crypto.subtle.generateKey(leafAlg, true, ["sign", "verify"]);
+    const leafCert = await X509CertificateGenerator.create({
+      serialNumber: "03",
+      subject: "CN=Leaf Cert",
+      issuer: "CN=Intermediate V3 Missing BC",
+      notBefore: new Date("2020/01/01"),
+      notAfter: new Date("2030/01/01"),
+      signingAlgorithm: interAlg,
+      signingKey: interKeys.privateKey,
+      publicKey: leafKeys.publicKey,
+      extensions: [
+        new BasicConstraintsExtension(false, undefined, true),
+      ],
+    });
+
+    // We include rootCert and interCert in the pool of certificates
+    const chainBuilder = new X509ChainBuilder({ certificates: [rootCert, interCert] });
+
+    const chain = await chainBuilder.build(leafCert);
+
+    // Since Intermediate is V3 and missing BasicConstraints, it should NOT be valid as a CA.
+    // Therefore, the chain should only contain the Leaf Cert (length 1), or at most fail to link to Root.
+    // If it builds chain length 3 (Leaf -> Intermediate -> Root), it's a vulnerability.
+
+    expect(chain.length).not.toBe(3);
+  });
 });
