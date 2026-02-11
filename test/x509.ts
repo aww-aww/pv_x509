@@ -32,4 +32,26 @@ describe("X509Certificate", () => {
     const cert = new X509Certificate(certWithSpecialEcParam);
     expect(cert.publicKey.algorithm.name).toBe("1.2.840.10045.2.1");
   });
+
+  it("computes thumbprint", async () => {
+    const cert = new X509Certificate(certWithSpecialEcParam);
+    const t1 = await cert.getThumbprint();
+    const t2 = await cert.getThumbprint("SHA-1");
+    const t3 = await cert.getThumbprint("SHA-256");
+    const t4 = await cert.getThumbprint({ name: "SHA-256" });
+
+    expect(new Uint8Array(t1)).toEqual(new Uint8Array(t2));
+    expect(new Uint8Array(t3)).toEqual(new Uint8Array(t4));
+    expect(new Uint8Array(t1)).not.toEqual(new Uint8Array(t3));
+
+    // Verify consistency on repeated calls (caching check)
+    const t5 = await cert.getThumbprint();
+    // Should return same ArrayBuffer instance if cached
+    expect(t5).toBe(t1);
+
+    const t6 = await cert.getThumbprint({ name: "SHA-1" });
+    expect(t6).toBe(t1);
+
+    expect(t3).toBe(t4);
+  });
 });
