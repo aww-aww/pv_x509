@@ -103,6 +103,14 @@ export class X509ChainBuilder {
           continue;
         }
 
+        // Check Basic Constraints presence for v3
+        // If the basic constraints extension is not present in a version 3 certificate,
+        // or the extension is present but the cA boolean is not asserted,
+        // then the certified public key MUST NOT be used to verify certificate signatures.
+        if (item.version === asn1X509.Version.v3 && !basicConstraints) {
+          continue;
+        }
+
         // Check Key Usage
         const keyUsage = item.getExtension<KeyUsagesExtension>(asn1X509.id_ce_keyUsage);
         if (keyUsage && !(keyUsage.usages & KeyUsageFlags.keyCertSign)) {
