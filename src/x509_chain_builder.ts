@@ -99,7 +99,17 @@ export class X509ChainBuilder {
         const basicConstraints = item.getExtension<BasicConstraintsExtension>(
           asn1X509.id_ce_basicConstraints,
         );
-        if (basicConstraints && !basicConstraints.ca) {
+
+        // Basic Constraints validation
+        if (item.version === asn1X509.Version.v3) {
+          // RFC 5280: If the basic constraints extension is not present in a version 3 certificate,
+          // or the extension is present but the cA boolean is not asserted,
+          // then the certified public key MUST NOT be used to verify certificate signatures.
+          if (!basicConstraints || !basicConstraints.ca) {
+            continue;
+          }
+        } else if (basicConstraints && !basicConstraints.ca) {
+          // For v1 and v2 certificates
           continue;
         }
 

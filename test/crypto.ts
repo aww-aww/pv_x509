@@ -610,6 +610,16 @@ D314IEOg4mnS8Q==
         extensions.push(akiExt);
       }
 
+      if (/ca/i.test(name)) {
+        extensions.push(new x509.BasicConstraintsExtension(true, 2, true));
+        extensions.push(
+          new x509.KeyUsagesExtension(
+            x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign,
+            true,
+          ),
+        );
+      }
+
       const res = await x509.X509CertificateGenerator.create({
         serialNumber: "01",
         subject: `CN=${name}`,
