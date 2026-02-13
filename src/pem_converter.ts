@@ -7,7 +7,7 @@ const rBeginTag = `${rPaddingTag}BEGIN (${rNameTag}(?=${rPaddingTag}))${rPadding
 const rEndTag = `${rPaddingTag}END \\1${rPaddingTag}`;
 const rEolGroup = "\\n";
 const rHeaderKey = `[^:${rEolChars}]+`;
-const rHeaderValue = `(?:[^${rEolChars}]+${rEolGroup}(?: +[^${rEolChars}]+${rEolGroup})*)`;
+const rHeaderValue = `(?:[^${rEolChars}]+${rEolGroup}(?: [^${rEolChars}]*${rEolGroup})*)`;
 const rBase64Chars = "[a-zA-Z0-9=+/]+";
 const rBase64 = `(?:${rBase64Chars}${rEolGroup})+`;
 const rPem = `${rBeginTag}${rEolGroup}(?:((?:${rHeaderKey}: ${rHeaderValue})+))?${rEolGroup}?(${rBase64})${rEndTag}`;
