@@ -81,21 +81,29 @@ export class PemConverter {
         const headers = headersString.split(new RegExp(rEolGroup, "g"));
         let lastHeader: PemHeader | null = null;
         for (const header of headers) {
-          const [key, value] = header.split(/:(.*)/);
-          if (value === undefined) {
+          if (header.startsWith(" ") || header.startsWith("\t")) {
             // value
             if (!lastHeader) {
               throw new Error("Cannot parse PEM string. Incorrect header value");
             }
-            lastHeader.value += key.trim();
+            lastHeader.value += header.trim();
           } else {
-            // key and value
-            if (lastHeader) {
-              pemStruct.headers.push(lastHeader);
+            const [key, value] = header.split(/:(.*)/);
+            if (value === undefined) {
+              // value
+              if (!lastHeader) {
+                throw new Error("Cannot parse PEM string. Incorrect header value");
+              }
+              lastHeader.value += key.trim();
+            } else {
+              // key and value
+              if (lastHeader) {
+                pemStruct.headers.push(lastHeader);
+              }
+              lastHeader = {
+                key, value: value.trim(),
+              };
             }
-            lastHeader = {
-              key, value: value.trim(),
-            };
           }
         }
         // add last header
@@ -200,12 +208,27 @@ export class PemConverter {
   private static encodeStruct(pem: PemStructEncodeParams): string {
     const upperCaseType = pem.type.toLocaleUpperCase();
 
+    if (/[\r\n]/.test(upperCaseType)) {
+      throw new Error("PEM type cannot contain newlines");
+    }
+
     const res: string[] = [];
     res.push(`-----BEGIN ${upperCaseType}-----`);
 
     if (pem.headers?.length) {
       for (const header of pem.headers) {
-        res.push(`${header.key}: ${header.value}`);
+        if (/[\r\n:]/.test(header.key)) {
+          throw new Error("PEM header key cannot contain newlines or colons");
+        }
+        if (/^ /.test(header.key)) {
+          throw new Error("PEM header key cannot start with space");
+        }
+
+        const values = header.value.split(/\r?\n/);
+        res.push(`${header.key}: ${values[0]}`);
+        for (let i = 1; i < values.length; i++) {
+          res.push(` ${values[i]}`);
+        }
       }
 
       res.push(""); // blank line
