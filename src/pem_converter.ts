@@ -11,6 +11,7 @@ const rHeaderValue = `(?:[^${rEolChars}]+${rEolGroup}(?: +[^${rEolChars}]+${rEol
 const rBase64Chars = "[a-zA-Z0-9=+/]+";
 const rBase64 = `(?:${rBase64Chars}${rEolGroup})+`;
 const rPem = `${rBeginTag}${rEolGroup}(?:((?:${rHeaderKey}: ${rHeaderValue})+))?${rEolGroup}?(${rBase64})${rEndTag}`;
+const rPemPattern = new RegExp(rPem, "g");
 const rEolPattern = new RegExp(`[${rEolChars}]+`, "g");
 
 export interface PemHeader {
@@ -52,19 +53,22 @@ export class PemConverter {
   public static PrivateKeyTag = "PRIVATE KEY";
 
   public static isPem(data: any): data is string {
-    return typeof data === "string"
-      && new RegExp(rPem, "g").test(data.replace(/\r/g, ""));
+    if (typeof data !== "string") {
+      return false;
+    }
+    rPemPattern.lastIndex = 0;
+    return rPemPattern.test(data.replace(/\r/g, ""));
   }
 
   public static decodeWithHeaders(pem: string): PemStruct[] {
     pem = pem.replace(/\r/g, ""); // CRLF -> LF
-    const pattern = new RegExp(rPem, "g");
+    rPemPattern.lastIndex = 0;
 
     const res: PemStruct[] = [];
 
     let matches: RegExpExecArray | null = null;
     // eslint-disable-next-line no-cond-assign
-    while (matches = pattern.exec(pem)) {
+    while (matches = rPemPattern.exec(pem)) {
       // prepare pem encoded message
       const base64 = matches[3]
         .replace(rEolPattern, "");
