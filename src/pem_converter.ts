@@ -205,6 +205,12 @@ export class PemConverter {
 
     if (pem.headers?.length) {
       for (const header of pem.headers) {
+        if (!header.key || /[:\r\n]/.test(header.key)) {
+          throw new Error("Cannot encode PEM. Invalid header key");
+        }
+        if (/[\r\n]/.test(header.value)) {
+          throw new Error("Cannot encode PEM. Invalid header value");
+        }
         res.push(`${header.key}: ${header.value}`);
       }
 
