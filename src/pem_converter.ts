@@ -44,6 +44,9 @@ export type PemStructEncodeParams = AtLeast<PemStruct, "type" | "rawData">;
 /**
  * Represents PEM Converter.
  */
+const rPemPatternGlobal = new RegExp(rPem, "g");
+const rCrPatternGlobal = /\r/g;
+
 export class PemConverter {
   public static CertificateTag = "CERTIFICATE";
   public static CrlTag = "CRL";
@@ -52,19 +55,22 @@ export class PemConverter {
   public static PrivateKeyTag = "PRIVATE KEY";
 
   public static isPem(data: any): data is string {
-    return typeof data === "string"
-      && new RegExp(rPem, "g").test(data.replace(/\r/g, ""));
+    if (typeof data !== "string") {
+      return false;
+    }
+    rPemPatternGlobal.lastIndex = 0;
+    return rPemPatternGlobal.test(data.replace(rCrPatternGlobal, ""));
   }
 
   public static decodeWithHeaders(pem: string): PemStruct[] {
-    pem = pem.replace(/\r/g, ""); // CRLF -> LF
-    const pattern = new RegExp(rPem, "g");
+    pem = pem.replace(rCrPatternGlobal, ""); // CRLF -> LF
+    const pattern = rPemPatternGlobal;
+    pattern.lastIndex = 0;
 
     const res: PemStruct[] = [];
 
     let matches: RegExpExecArray | null = null;
-    // eslint-disable-next-line no-cond-assign
-    while (matches = pattern.exec(pem)) {
+    while ((matches = pattern.exec(pem))) {
       // prepare pem encoded message
       const base64 = matches[3]
         .replace(rEolPattern, "");
@@ -78,17 +84,20 @@ export class PemConverter {
       // read headers
       const headersString = matches[2];
       if (headersString) {
-        const headers = headersString.split(new RegExp(rEolGroup, "g"));
+        const headers = headersString.split("\n");
         let lastHeader: PemHeader | null = null;
         for (const header of headers) {
-          const [key, value] = header.split(/:(.*)/);
-          if (value === undefined) {
+          const colonIndex = header.indexOf(":");
+          if (colonIndex === -1) {
+            const key = header;
             // value
             if (!lastHeader) {
               throw new Error("Cannot parse PEM string. Incorrect header value");
             }
             lastHeader.value += key.trim();
           } else {
+            const key = header.substring(0, colonIndex);
+            const value = header.substring(colonIndex + 1);
             // key and value
             if (lastHeader) {
               pemStruct.headers.push(lastHeader);
