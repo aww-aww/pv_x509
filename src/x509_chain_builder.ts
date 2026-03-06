@@ -1,6 +1,6 @@
 import { AsnConvert } from "@peculiar/asn1-schema";
 import * as asn1X509 from "@peculiar/asn1-x509";
-import { isEqual } from "pvtsutils";
+import { Convert, isEqual } from "pvtsutils";
 import {
   AuthorityKeyIdentifierExtension,
   BasicConstraintsExtension,
@@ -44,18 +44,22 @@ export class X509ChainBuilder {
 
   public async build(cert: X509Certificate, crypto = cryptoProvider.get()) {
     const chain = new X509Certificates(cert);
+    // Use a Set to store thumbprints of certificates in the chain for O(1) lookup
+    // This avoids O(N^2) complexity when checking for circular dependencies
+    const thumbprints = new Set<string>();
+
+    thumbprints.add(Convert.ToHex(await cert.getThumbprint(crypto)));
 
     let current: X509Certificate | null = cert;
     // eslint-disable-next-line no-cond-assign
     while (current = await this.findIssuer(current, crypto)) {
       // check out circular dependency
       const thumbprint = await current.getThumbprint(crypto);
-      for (const item of chain) {
-        const thumbprint2 = await item.getThumbprint(crypto);
-        if (isEqual(thumbprint, thumbprint2)) {
-          throw new Error("Cannot build a certificate chain. Circular dependency.");
-        }
+      const thumbprintHex = Convert.ToHex(thumbprint);
+      if (thumbprints.has(thumbprintHex)) {
+        throw new Error("Cannot build a certificate chain. Circular dependency.");
       }
+      thumbprints.add(thumbprintHex);
 
       chain.push(current);
     }
