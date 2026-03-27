@@ -56,6 +56,7 @@ export class X509ChainBuilder {
       if (thumbprints.has(thumbprintHex)) {
         throw new Error("Cannot build a certificate chain. Circular dependency.");
       }
+      thumbprints.add(thumbprintHex);
 
       thumbprints.add(thumbprintHex);
       chain.push(current);
