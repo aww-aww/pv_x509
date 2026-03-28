@@ -1,0 +1,4 @@
+## 2024-05-22 - ReDoS in PEM Header Parsing
+**Vulnerability:** A ReDoS vulnerability was found in `pem_converter.ts` within the regex used to parse PEM headers. The pattern `(?: +[^${rEolChars}]+${rEolGroup})*` contained nested quantifiers with overlapping matches (` +` and `[^...]+` both match spaces), causing catastrophic backtracking when processing long lines of spaces.
+**Learning:** Regexes with nested quantifiers where inner parts can match the same characters are dangerous. In this case, ` +` (one or more spaces) and `[^...]+` (one or more non-newlines) overlapped on spaces.
+**Prevention:** Avoid nested quantifiers where possible. Ensure that parts of a regex alternatives or sequences are mutually exclusive or atomic. Use tools or manual review to check for O(N^2) or exponential complexity in regexes.
