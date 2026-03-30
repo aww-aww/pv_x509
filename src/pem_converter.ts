@@ -6,7 +6,7 @@ const rNameTag = `[^${rEolChars}]+`;
 const rBeginTag = `${rPaddingTag}BEGIN (${rNameTag}(?=${rPaddingTag}))${rPaddingTag}`;
 const rEndTag = `${rPaddingTag}END \\1${rPaddingTag}`;
 const rEolGroup = "\\n";
-const rHeaderKey = `[^:${rEolChars}]+`;
+const rHeaderKey = `[^:${rEolChars}\\s][^:${rEolChars}]*`;
 const rHeaderValue = `(?:[^${rEolChars}]+${rEolGroup}(?: +[^${rEolChars}]+${rEolGroup})*)`;
 const rBase64Chars = "[a-zA-Z0-9=+/]+";
 const rBase64 = `(?:${rBase64Chars}${rEolGroup})+`;
