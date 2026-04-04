@@ -200,11 +200,22 @@ export class PemConverter {
   private static encodeStruct(pem: PemStructEncodeParams): string {
     const upperCaseType = pem.type.toLocaleUpperCase();
 
+    if (/[\r\n]/.test(upperCaseType)) {
+      throw new Error("PEM type cannot contain newlines");
+    }
+
     const res: string[] = [];
     res.push(`-----BEGIN ${upperCaseType}-----`);
 
     if (pem.headers?.length) {
       for (const header of pem.headers) {
+        if (/[\r\n:]/.test(header.key) || /^\s|\s$/.test(header.key)) {
+          throw new Error("PEM header key is invalid");
+        }
+        if (/[\r\n]/.test(header.value)) {
+          throw new Error("PEM header value cannot contain newlines");
+        }
+
         res.push(`${header.key}: ${header.value}`);
       }
 
